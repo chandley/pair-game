@@ -35,12 +35,31 @@ func handler (w http.ResponseWriter, r *http.Request) {
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-	const text = `<html>
-	<body>
-	<a href="http://localhost:8080/clicked"><img src="http://localhost:8080/images/kitten.jpg"/></a>
-	</body>
-	</html>`
-	fmt.Fprintf(w, text)
+	var myInfo = struct{
+		Image string
+	}{"kitten"}
+
+	const templ = `<body>
+	<table>
+	{{range loop 3}}
+		<tr>
+		{{range loop 3}}
+			<img src="http://localhost:8080/images/kitten.jpg">
+		{{end}}
+		</table>
+	{{end}}
+	</tr>
+	<p>{{.Image}}</p>
+	<body>`
+
+	var loopFunc = func(n int) []struct{} {
+		return make([]struct{}, n)
+	}
+	reports := template.Must(template.New("report").Funcs(template.FuncMap{
+		"loop": loopFunc,
+	}).Parse(templ))
+
+	reports.Execute(w, myInfo)
 }
 
 func main()  {
