@@ -4,19 +4,11 @@ import "fmt"
 import (
 	"net/http"
 	"log"
-	"io"
-	"os"
 	"html/template"
 )
 
-func WebHandler (w http.ResponseWriter, r *http.Request) {
-	img, err := os.Open("./kitten.jpg")
-	if err != nil {
-		log.Fatal(err) // perhaps handle this nicer
-	}
-	defer img.Close()
-	w.Header().Set("Content-Type", "image/jpeg") // <-- set the content-type header
-	io.Copy(w, img)
+func webHandler (w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, r.URL.Path[1:])
 }
 
 func handler (w http.ResponseWriter, r *http.Request) {
@@ -37,18 +29,18 @@ func handler (w http.ResponseWriter, r *http.Request) {
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	var myInfo = struct{
 		Image string
-	}{"kitten"}
+	}{"puppy"}
 
 	const templ = `<body>
 	<table>
 	{{range loop 3}}
 		<tr>
 		{{range loop 3}}
-			<img src="http://localhost:8080/images/kitten.jpg">
+			<img src="http://localhost:8080/images/puppy.jpg">
 		{{end}}
-		</table>
+		</tr>
 	{{end}}
-	</tr>
+	</table>
 	<p>{{.Image}}</p>
 	<body>`
 
@@ -66,6 +58,6 @@ func main()  {
 	fmt.Println("started")
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/clicked", handler)
-	http.HandleFunc("/images/", WebHandler)
+	http.HandleFunc("/images/", webHandler)
 	http.ListenAndServe(":8080", nil)
 }
