@@ -32,12 +32,16 @@ func webHandler (w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) clickHandler(w http.ResponseWriter, r *http.Request) {
+	if s.clickedCount() >= 2 {
+		s.resetClicked()
+	}
 	locationString := r.URL.Path[len("/clicked/"):]
 	rowIndex, _ := strconv.Atoi(locationString[:1])
 	colIndex, _ := strconv.Atoi(locationString[2:])
 	s.currentBoard.Rows[rowIndex].Cells[colIndex].Clicked = true
-	s.currentBoard.Rows[rowIndex].Cells[colIndex].Visible = !(s.currentBoard.Rows[rowIndex].Cells[colIndex].Visible)
+	s.currentBoard.Rows[rowIndex].Cells[colIndex].Visible = true
 	http.Redirect(w, r, "/board/", http.StatusFound)
+	s.checkForClickedPair()
 	return
 }
 
@@ -83,7 +87,7 @@ func (s *server) checkForClickedPair() (bool){
 	clickedCells := []*cell{}
 	clickedIndices := []indexPair{}
 	for i, thisRow := range s.currentBoard.Rows {
-		for j, thisCell := range thisRow.Cells {
+		for j, thisCell := range thisRow.Cells {  // TODO iterate over reference???
 			if thisCell.Clicked  {
 				clickedCells = append(clickedCells, &thisCell)
 				clickedIndices = append(clickedIndices, indexPair{i,j,})
@@ -94,13 +98,10 @@ func (s *server) checkForClickedPair() (bool){
 		return false
 	}
 
-	if clickedCells[0].Animal == clickedCells[1].Animal {
-		fmt.Println("yes pair yay")
-		s.currentBoard.Rows[clickedIndices[0].x].Cells[clickedIndices[0].y].Paired = true
+	if s.currentBoard.Rows[clickedIndices[0].x].Cells[clickedIndices[0].y].Animal ==  s.currentBoard.Rows[clickedIndices[1].x].Cells[clickedIndices[1].y].Animal {
+		fmt.Println("detected a pair", clickedIndices)
+		s.currentBoard.Rows[clickedIndices[0].x].Cells[clickedIndices[0].y].Paired = true // seems hacky
 		s.currentBoard.Rows[clickedIndices[1].x].Cells[clickedIndices[1].y].Paired = true
-
-		clickedCells[0].Paired = true
-		clickedCells[1].Paired = true
 		return true
 	}
 
@@ -110,6 +111,9 @@ func (s *server) checkForClickedPair() (bool){
 
 
 func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
+	//if s.clickedCount() > 2 {
+	//	s.resetClicked()
+	//}
 	fmt.Println("showing board")
 	const templ = `
 	<body>
@@ -128,11 +132,6 @@ func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
 
 	gameBoard.Execute(w, s.currentBoard)
 
-	if s.clickedCount() >= 2 {
-		time.Sleep(500 * time.Millisecond)
-		s.resetClicked()
-		http.Redirect(w, r, "/board/", http.StatusFound) // TODO does not redirect!
-	}
 }
 
 func main()  {
@@ -148,6 +147,7 @@ func main()  {
 func getNewBoard() *board {
 	first := row{
 		[]cell{
+			cell{Animal: "martha"},
 			cell{Animal: "puppy"},
 			cell{Animal: "kitten"},
 			cell{Animal: "martha"},
@@ -157,6 +157,7 @@ func getNewBoard() *board {
 	second := row{
 		[]cell{
 			cell{Animal: "puppy"},
+			cell{Animal: "martha"},
 			cell{Animal: "kitten"},
 			cell{Animal: "puppy"},
 		},
@@ -165,6 +166,7 @@ func getNewBoard() *board {
 	third := row{
 		[]cell{
 			cell{Animal: "kitten"},
+			cell{Animal: "martha"},
 			cell{Animal: "puppy"},
 			cell{Animal: "kitten"},
 		},
