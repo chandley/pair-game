@@ -15,12 +15,9 @@ type cell struct  {
 	Visible bool
 }
 
-type row struct {
-	Cells []cell
-}
 
 type board struct {
-	Rows []row
+	Cells [][]cell
 }
 
 type server struct {
@@ -38,16 +35,16 @@ func (s *server) clickHandler(w http.ResponseWriter, r *http.Request) {
 	locationString := r.URL.Path[len("/clicked/"):]
 	rowIndex, _ := strconv.Atoi(locationString[:1])
 	colIndex, _ := strconv.Atoi(locationString[2:])
-	s.currentBoard.Rows[rowIndex].Cells[colIndex].Clicked = true
-	s.currentBoard.Rows[rowIndex].Cells[colIndex].Visible = true
+	s.currentBoard.Cells[rowIndex][colIndex].Clicked = true
+	s.currentBoard.Cells[rowIndex][colIndex].Visible = true
 	http.Redirect(w, r, "/board/", http.StatusFound)
 	s.checkForClickedPair()
 	return
 }
 
 func (s *server) clickedCount() (clickedCount int) {
-	for _, thisRow := range s.currentBoard.Rows {
-		for _, thisCell := range thisRow.Cells {
+	for _, thisRow := range s.currentBoard.Cells {
+		for _, thisCell := range thisRow {
 			if thisCell.Clicked  {
 				clickedCount += 1
 			}
@@ -57,12 +54,12 @@ func (s *server) clickedCount() (clickedCount int) {
 }
 
 func (s * server) resetClicked() {
-	for i, thisRow := range s.currentBoard.Rows {
-		for j, thisCell := range thisRow.Cells {
+	for i, thisRow := range s.currentBoard.Cells {
+		for j, thisCell := range thisRow {
 			if thisCell.Clicked  {
-				s.currentBoard.Rows[i].Cells[j].Clicked = false
+				s.currentBoard.Cells[i][j].Clicked = false
 				if !thisCell.Paired {
-					s.currentBoard.Rows[i].Cells[j].Visible = false
+					s.currentBoard.Cells[i][j].Visible = false
 				}
 			}
 		}
@@ -84,24 +81,22 @@ func (s *server) checkForClickedPair() (bool){
 		x int
 		y int
 	}
-	clickedCells := []*cell{}
 	clickedIndices := []indexPair{}
-	for i, thisRow := range s.currentBoard.Rows {
-		for j, thisCell := range thisRow.Cells {  // TODO iterate over reference???
+	for i, thisRow := range s.currentBoard.Cells {
+		for j, thisCell := range thisRow {
 			if thisCell.Clicked  {
-				clickedCells = append(clickedCells, &thisCell)
 				clickedIndices = append(clickedIndices, indexPair{i,j,})
 			}
 		}
 	}
-	if len(clickedCells) != 2 {
+	if len(clickedIndices) != 2 {
 		return false
 	}
 
-	if s.currentBoard.Rows[clickedIndices[0].x].Cells[clickedIndices[0].y].Animal ==  s.currentBoard.Rows[clickedIndices[1].x].Cells[clickedIndices[1].y].Animal {
+	if s.currentBoard.Cells[clickedIndices[0].x][clickedIndices[0].y].Animal ==  s.currentBoard.Cells[clickedIndices[1].x][clickedIndices[1].y].Animal {
 		fmt.Println("detected a pair", clickedIndices)
-		s.currentBoard.Rows[clickedIndices[0].x].Cells[clickedIndices[0].y].Paired = true // seems hacky
-		s.currentBoard.Rows[clickedIndices[1].x].Cells[clickedIndices[1].y].Paired = true
+		s.currentBoard.Cells[clickedIndices[0].x][clickedIndices[0].y].Paired = true
+		s.currentBoard.Cells[clickedIndices[1].x][clickedIndices[1].y].Paired = true
 		return true
 	}
 
@@ -111,15 +106,13 @@ func (s *server) checkForClickedPair() (bool){
 
 
 func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
-	//if s.clickedCount() > 2 {
-	//	s.resetClicked()
-	//}
+
 	fmt.Println("showing board")
 	const templ = `
 	<body>
-	{{ range $rowIndex, $trow := .Rows }}
+	{{ range $rowIndex, $trow := .Cells }}
 		<div width="100%">
-		{{range $colIndex, $tcell := .Cells}}
+		{{range $colIndex, $tcell := $trow}}
 			<a href="http://localhost:8080/clicked/{{$rowIndex}}/{{$colIndex}}">
 			<img style="width:200px; height:200px; object-fit:cover" src="http://localhost:8080/images/{{if $tcell.Visible}}{{$tcell.Animal}}.jpg{{else}}mergermarket.jpg {{end}}">
 			</a>
@@ -145,72 +138,30 @@ func main()  {
 }
 
 func getNewBoard() *board {
-	first := row{
-		[]cell{
-			cell{Animal: "martha"},
-			cell{Animal: "puppy"},
-			cell{Animal: "kitten"},
-			cell{Animal: "martha"},
+
+	cells := [][]cell{
+		{
+			{Animal: "puppy"},
+			{Animal: "kitten"},
+			{Animal: "martha"},
+			{Animal: "kitten"},
+		},
+		{
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+		},
+		{
+			{Animal: "martha"},
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+			{Animal: "kitten"},
 		},
 	}
 
-	second := row{
-		[]cell{
-			cell{Animal: "puppy"},
-			cell{Animal: "martha"},
-			cell{Animal: "kitten"},
-			cell{Animal: "puppy"},
-		},
-	}
+	board := board{cells}
 
-	third := row{
-		[]cell{
-			cell{Animal: "kitten"},
-			cell{Animal: "martha"},
-			cell{Animal: "puppy"},
-			cell{Animal: "kitten"},
-		},
-	}
-
-	myboard := board{
-		[]row{
-			first, second, third,
-		},
-	}
-
-	return &myboard
+	return &board
 }
 
-//func getAllPuppies() *board {
-//	first := row{
-//		[]cell{
-//			cell{"puppy"},
-//			cell{"puppy"},
-//			cell{"puppy"},
-//		},
-//	}
-//
-//	second := row{
-//		[]cell{
-//			cell{"puppy"},
-//			cell{"puppy"},
-//			cell{"puppy"},
-//		},
-//	}
-//
-//	third := row{
-//		[]cell{
-//			cell{"puppy"},
-//			cell{"puppy"},
-//			cell{"puppy"},
-//		},
-//	}
-//
-//	myboard := board{
-//		[]row{
-//			first, second, third,
-//		},
-//	}
-//
-//	return &myboard
-//}

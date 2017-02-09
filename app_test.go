@@ -10,20 +10,22 @@ func TestCountClicked(t *testing.T) {
 	}
 }
 func getServerWithOneClicked() server {
-	first := row{
-		[]cell{
-			cell{Animal: "puppy"},
+	cells := [][]cell{
+		{
 			cell{Animal: "puppy"},
 			cell{Animal: "puppy"},
 		},
-	}
-	myboard := board{
-		[]row{
-			first,
+		{
+			cell{Animal: "puppy"},
+			cell{Animal: "puppy"},
+
 		},
 	}
-	myboard.Rows[0].Cells[0].Clicked = true
+
+
+	myboard := board{cells}
 	s := server{&myboard}
+	s.currentBoard.Cells[0][0].Clicked = true
 	return s
 }
 
@@ -40,13 +42,13 @@ func TestResetClicked(t *testing.T) {
 func TestDontMarkClickedNotPair(t *testing.T) {
 	s := getServerWithOneClicked()
 
-	s.currentBoard.Rows[0].Cells[1] = cell{Animal: "kitten", Clicked: true}
+	s.currentBoard.Cells[1][0] = cell{Animal: "kitten", Clicked: true}
 	s.checkForClickedPair()
 
-	if s.currentBoard.Rows[0].Cells[1].Paired || s.currentBoard.Rows[0].Cells[0].Paired {
+	if s.currentBoard.Cells[1][0].Paired || s.currentBoard.Cells[0][0].Paired {
 		t.Error ("puppy and kitten should not be marked as pair",
-			s.currentBoard.Rows[0].Cells[1].Paired,
-			s.currentBoard.Rows[0].Cells[0].Paired)
+			s.currentBoard.Cells[1][0].Paired,
+			s.currentBoard.Cells[0][0].Paired)
 	}
 
 }
@@ -54,13 +56,13 @@ func TestDontMarkClickedNotPair(t *testing.T) {
 func TestMarkClickedPair(t *testing.T) {
 	s := getServerWithOneClicked()
 
-	s.currentBoard.Rows[0].Cells[1] = cell{Animal: "puppy", Clicked: true}
+	s.currentBoard.Cells[1][0] = cell{Animal: "puppy", Clicked: true}
 	s.checkForClickedPair()
 
-	if !(s.currentBoard.Rows[0].Cells[1].Paired && s.currentBoard.Rows[0].Cells[0].Paired) {
+	if !(s.currentBoard.Cells[1][0].Paired && s.currentBoard.Cells[0][0].Paired) {
 		t.Error ("puppy and puppy should both be marked as pair",
-			s.currentBoard.Rows[0].Cells[1].Paired,
-			s.currentBoard.Rows[0].Cells[0].Paired)
+			s.currentBoard.Cells[1][0].Paired,
+			s.currentBoard.Cells[0][0].Paired)
 	}
 
 }
