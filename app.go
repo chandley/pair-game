@@ -32,33 +32,64 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		Animal string
 	}
 
-	puppy := cell{"puppy"}
-	kitten := cell{"kitten"}
-
-	var myrow []cell
-
-	myrow = append(myrow, kitten)
-	myrow = append(myrow, puppy)
-	myrow = append(myrow, kitten)
-
-	var myInfo = struct{
-		Image string
-		Row []cell
-	}{"puppy", myrow,
+	type row struct {
+		Cells []cell
 	}
 
+	type board struct {
+		Rows []row
+	}
+
+	//puppy := cell{"puppy"}
+	//kitten := cell{"kitten"}
+
+	first := row{
+		[]cell{
+			cell{"puppy"},
+			cell{"puppy"},
+			cell{"kitten"},
+		},
+	}
+
+	second := row{
+		[]cell{
+			cell{"kitten"},
+			cell{"puppy"},
+			cell{"kitten"},
+		},
+	}
+
+	third := row{
+		[]cell{
+			cell{"kitten"},
+			cell{"kitten"},
+			cell{"puppy"},
+		},
+	}
+
+	pets := board{
+		[]row{
+			first, second, third,
+		},
+	}
+
+
 	const templ = `<body>
-	<table>
-	{{ $trow := .Row }}
 
-	<tr>
-	{{range $tcell := $trow}}
-		<a href="http://localhost:8080/clicked"><img src="http://localhost:8080/images/{{$tcell.Animal}}.jpg"></a>
-	{{end}}
-	</tr>
+	{{ range $rowIndex, $trow := .Rows }}
+		<div width="100%">
 
-	</table>
-	<p>{{.Image}}</p>
+		{{range $colIndex, $tcell := .Cells}}
+
+			<a href="http://localhost:8080/clicked/{{$rowIndex}}/{{$colIndex}}"><img style="width:200px;height:200px;object-fit: cover" src="http://localhost:8080/images/{{$tcell.Animal}}.jpg"></a>
+
+		{{end}}
+
+		<div>
+
+	{{ end }}
+
+
 	<body>`
 
 	const cellTemplate = `<a href="http://localhost:8080/clicked"><img src="http://localhost:8080/images/{{.Animal}}.jpg"></a>`
@@ -71,7 +102,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		"loop": loopFunc,
 	}).Parse(templ))
 
-	reports.Execute(w, myInfo)
+	reports.Execute(w, pets)
 }
 
 func main()  {
