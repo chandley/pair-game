@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"strconv"
 	"time"
+	"math/rand"
 )
 
 type cell struct  {
@@ -130,11 +131,23 @@ func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
 func main()  {
 	myBoard := getNewBoard()
 	server := &server{myBoard}
+	server.shuffle()
 	fmt.Println("started")
 	http.HandleFunc("/board/", server.viewHandler)
 	http.HandleFunc("/clicked/", server.clickHandler)
 	http.HandleFunc("/images/", webHandler)
 	http.ListenAndServe(":8080", nil)
+}
+
+func (s *server) shuffle() {
+	rand.Seed(time.Now().UTC().UnixNano())
+	for i, row := range s.currentBoard.Cells {
+		for j, _ := range row {
+			a := rand.Intn(len(s.currentBoard.Cells))
+			b := rand.Intn(len(s.currentBoard.Cells[0]))
+			s.currentBoard.Cells[i][j], s.currentBoard.Cells[a][b] = s.currentBoard.Cells[a][b], s.currentBoard.Cells[i][j]
+		}
+	}
 }
 
 func getNewBoard() *board {
