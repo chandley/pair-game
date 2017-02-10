@@ -78,26 +78,26 @@ func (s *server) resetIfTwoClicked(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) checkForClickedPair() (bool){
+
 	type indexPair struct{
 		x int
 		y int
 	}
-	clickedIndices := []indexPair{}
+	clickedCells := []*cell{}
 	for i, thisRow := range s.currentBoard.Cells {
 		for j, thisCell := range thisRow {
 			if thisCell.Clicked  {
-				clickedIndices = append(clickedIndices, indexPair{i,j,})
+				clickedCells = append(clickedCells, &s.currentBoard.Cells[i][j])
 			}
 		}
 	}
-	if len(clickedIndices) != 2 {
+	if len(clickedCells) != 2 {
 		return false
 	}
 
-	if s.currentBoard.Cells[clickedIndices[0].x][clickedIndices[0].y].Animal ==  s.currentBoard.Cells[clickedIndices[1].x][clickedIndices[1].y].Animal {
-		fmt.Println("detected a pair", clickedIndices)
-		s.currentBoard.Cells[clickedIndices[0].x][clickedIndices[0].y].Paired = true
-		s.currentBoard.Cells[clickedIndices[1].x][clickedIndices[1].y].Paired = true
+	if clickedCells[0].Animal ==  clickedCells[1].Animal {
+		clickedCells[0].Paired = true
+		clickedCells[1].Paired = true
 		return true
 	}
 
