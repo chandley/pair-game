@@ -104,6 +104,12 @@ func (s *server) checkForClickedPair() (bool){
 	return false
 }
 
+func (s *server) resetHandler (w http.ResponseWriter, r *http.Request) {
+	s.currentBoard = getNewBoard()
+	s.shuffle()
+	http.Redirect(w, r, "/board/", http.StatusFound)
+}
+
 
 
 func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
@@ -111,11 +117,12 @@ func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
 	fmt.Println("showing board")
 	const templ = `
 	<body>
-	{{ range $rowIndex, $trow := .Cells }}
+	<a href="http://localhost:8080/reset">Reset</a>
+	{{ range $i, $row  :=  .Cells }}
 		<div width="100%">
-		{{range $colIndex, $tcell := $trow}}
-			<a href="http://localhost:8080/clicked/{{$rowIndex}}/{{$colIndex}}">
-			<img style="width:200px; height:200px; object-fit:cover" src="http://localhost:8080/images/{{if $tcell.Visible}}{{$tcell.Animal}}.jpg{{else}}mergermarket.jpg {{end}}">
+		{{range $j, $cell := $row}}
+			<a href="http://localhost:8080/clicked/{{$i}}/{{$j}}">
+			<img style="width:200px; height:200px; object-fit:cover" src="http://localhost:8080/images/{{if $cell.Visible}}{{$cell.Animal}}.jpg{{else}}mergermarket.jpg {{end}}">
 			</a>
 		{{end}}
 		<div>
@@ -134,6 +141,7 @@ func main()  {
 	server.shuffle()
 	fmt.Println("started")
 	http.HandleFunc("/board/", server.viewHandler)
+	http.HandleFunc("/reset/", server.resetHandler)
 	http.HandleFunc("/clicked/", server.clickHandler)
 	http.HandleFunc("/images/", webHandler)
 	http.ListenAndServe(":8080", nil)
