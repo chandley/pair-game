@@ -1,0 +1,15 @@
+<body>
+    <a href="http://localhost:8080/reset">Reset</a>
+    {{ range $i, $row  :=  .Cells }}
+        <div width="100%">
+        {{range $j, $cell := $row}}
+            <a href="http://localhost:8080/clicked/{{$i}}/{{$j}}">
+                <img style="width:200px;
+                height:200px;
+                object-fit:cover"
+                src="http://localhost:8080/images/{{if $cell.Visible}}{{$cell.Animal}}.jpg{{else}}mergermarket.jpg {{end}}">
+            </a>
+        {{end}}
+        <div>
+    {{ end }}
+<body>

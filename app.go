@@ -9,20 +9,18 @@ import (
 	"math/rand"
 )
 
-type cell struct  {
-	Animal string
-	Clicked bool
-	Paired bool
-	Visible bool
-}
-
-
-type board struct {
-	Cells [][]cell
+func main()  {
+	server := &server{getNewBoard()}
+	fmt.Println("started")
+	http.HandleFunc("/", server.viewHandler)
+	http.HandleFunc("/reset/", server.resetHandler)
+	http.HandleFunc("/clicked/", server.clickHandler)
+	http.HandleFunc("/images/", webHandler)
+	http.ListenAndServe(":8080", nil)
 }
 
 type server struct {
-	currentBoard *board
+	currentBoard *Board
 }
 
 func webHandler (w http.ResponseWriter, r *http.Request) {
@@ -30,21 +28,110 @@ func webHandler (w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) clickHandler(w http.ResponseWriter, r *http.Request) {
-	if s.clickedCount() >= 2 {
-		s.resetClicked()
+	if s.currentBoard.ClickedCount() >= 2 {
+		s.currentBoard.ResetClicked()
 	}
 	locationString := r.URL.Path[len("/clicked/"):]
 	rowIndex, _ := strconv.Atoi(locationString[:1])
 	colIndex, _ := strconv.Atoi(locationString[2:])
 	s.currentBoard.Cells[rowIndex][colIndex].Clicked = true
 	s.currentBoard.Cells[rowIndex][colIndex].Visible = true
-	http.Redirect(w, r, "/board/", http.StatusFound)
+	http.Redirect(w, r, "/", http.StatusFound)
 	s.checkForClickedPair()
 	return
 }
 
-func (s *server) clickedCount() (clickedCount int) {
-	for _, thisRow := range s.currentBoard.Cells {
+func (s *server) resetIfTwoClicked(w http.ResponseWriter, r *http.Request) {
+	if s.currentBoard.ClickedCount() >= 2 {
+		time.Sleep(500 * time.Millisecond)
+		s.currentBoard.ResetClicked()
+		http.Redirect(w, r, "/", http.StatusFound)
+
+	}
+}
+
+func (s *server) checkForClickedPair() {
+
+	clickedCells := []*Cell{}
+	for i, thisRow := range s.currentBoard.Cells {
+		for j, thisCell := range thisRow {
+			if thisCell.Clicked  {
+				clickedCells = append(clickedCells, &s.currentBoard.Cells[i][j])
+			}
+		}
+	}
+	if len(clickedCells) != 2 {
+		return
+	}
+
+	if clickedCells[0].Animal ==  clickedCells[1].Animal {
+		clickedCells[0].Paired = true
+		clickedCells[1].Paired = true
+	}
+}
+
+func (s *server) resetHandler (w http.ResponseWriter, r *http.Request) {
+	s.currentBoard = getNewBoard()
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+
+func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
+	gameBoard := template.Must(template.ParseFiles("board.html"))
+	gameBoard.Execute(w, s.currentBoard)
+}
+
+//func (s *server) shuffle() {
+//	rand.Seed(time.Now().UTC().UnixNano())
+//	for i, row := range s.currentBoard.Cells {
+//		for j, _ := range row {
+//			a := rand.Intn(len(s.currentBoard.Cells))
+//			b := rand.Intn(len(s.currentBoard.Cells[0]))
+//			s.currentBoard.Cells[i][j], s.currentBoard.Cells[a][b] = s.currentBoard.Cells[a][b], s.currentBoard.Cells[i][j]
+//		}
+//	}
+//}
+
+func getNewBoard() *Board {
+	cells := [][]Cell{
+		{
+			{Animal: "puppy"},
+			{Animal: "kitten"},
+			{Animal: "martha"},
+			{Animal: "kitten"},
+		},
+		{
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+		},
+		{
+			{Animal: "martha"},
+			{Animal: "kitten"},
+			{Animal: "puppy"},
+			{Animal: "kitten"},
+		},
+	}
+
+	board := Board{cells}
+	board.Shuffle()
+	return &board
+}
+
+type Cell struct  {
+	Animal string
+	Clicked bool
+	Paired bool
+	Visible bool
+}
+
+type Board struct {
+	Cells [][]Cell
+}
+
+func (b *Board) ClickedCount() (clickedCount int) {
+	for _, thisRow := range b.Cells {
 		for _, thisCell := range thisRow {
 			if thisCell.Clicked  {
 				clickedCount += 1
@@ -54,13 +141,13 @@ func (s *server) clickedCount() (clickedCount int) {
 	return
 }
 
-func (s * server) resetClicked() {
-	for i, thisRow := range s.currentBoard.Cells {
+func (b *Board) ResetClicked() {
+	for i, thisRow := range b.Cells {
 		for j, thisCell := range thisRow {
 			if thisCell.Clicked  {
-				s.currentBoard.Cells[i][j].Clicked = false
+				b.Cells[i][j].Clicked = false
 				if !thisCell.Paired {
-					s.currentBoard.Cells[i][j].Visible = false
+					b.Cells[i][j].Visible = false
 				}
 			}
 		}
@@ -68,121 +155,17 @@ func (s * server) resetClicked() {
 	return
 }
 
-func (s *server) resetIfTwoClicked(w http.ResponseWriter, r *http.Request) {
-	if s.clickedCount() >= 2 {
-		time.Sleep(500 * time.Millisecond)
-		s.resetClicked()
-		http.Redirect(w, r, "/board/", http.StatusFound)
-
-	}
-}
-
-func (s *server) checkForClickedPair() (bool){
-
-	type indexPair struct{
-		x int
-		y int
-	}
-	clickedCells := []*cell{}
-	for i, thisRow := range s.currentBoard.Cells {
-		for j, thisCell := range thisRow {
-			if thisCell.Clicked  {
-				clickedCells = append(clickedCells, &s.currentBoard.Cells[i][j])
-			}
-		}
-	}
-	if len(clickedCells) != 2 {
-		return false
-	}
-
-	if clickedCells[0].Animal ==  clickedCells[1].Animal {
-		clickedCells[0].Paired = true
-		clickedCells[1].Paired = true
-		return true
-	}
-
-	return false
-}
-
-func (s *server) resetHandler (w http.ResponseWriter, r *http.Request) {
-	s.currentBoard = getNewBoard()
-	s.shuffle()
-	http.Redirect(w, r, "/board/", http.StatusFound)
-}
-
-
-
-func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("showing board")
-	const templ = `
-	<body>
-	<a href="http://localhost:8080/reset">Reset</a>
-	{{ range $i, $row  :=  .Cells }}
-		<div width="100%">
-		{{range $j, $cell := $row}}
-			<a href="http://localhost:8080/clicked/{{$i}}/{{$j}}">
-			<img style="width:200px; height:200px; object-fit:cover" src="http://localhost:8080/images/{{if $cell.Visible}}{{$cell.Animal}}.jpg{{else}}mergermarket.jpg {{end}}">
-			</a>
-		{{end}}
-		<div>
-	{{ end }}
-	<body>`
-
-	gameBoard := template.Must(template.New("gameBoard").Parse(templ))
-
-	gameBoard.Execute(w, s.currentBoard)
-
-}
-
-func main()  {
-	myBoard := getNewBoard()
-	server := &server{myBoard}
-	server.shuffle()
-	fmt.Println("started")
-	http.HandleFunc("/board/", server.viewHandler)
-	http.HandleFunc("/reset/", server.resetHandler)
-	http.HandleFunc("/clicked/", server.clickHandler)
-	http.HandleFunc("/images/", webHandler)
-	http.ListenAndServe(":8080", nil)
-}
-
-func (s *server) shuffle() {
+func (b *Board) Shuffle() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	for i, row := range s.currentBoard.Cells {
+	for i, row := range b.Cells {
 		for j, _ := range row {
-			a := rand.Intn(len(s.currentBoard.Cells))
-			b := rand.Intn(len(s.currentBoard.Cells[0]))
-			s.currentBoard.Cells[i][j], s.currentBoard.Cells[a][b] = s.currentBoard.Cells[a][b], s.currentBoard.Cells[i][j]
+			x := rand.Intn(len(b.Cells))
+			y := rand.Intn(len(b.Cells[0]))
+			b.Cells[i][j], b.Cells[x][y] = b.Cells[x][y], b.Cells[i][j]
 		}
 	}
 }
 
-func getNewBoard() *board {
 
-	cells := [][]cell{
-		{
-			{Animal: "puppy"},
-			{Animal: "kitten"},
-			{Animal: "martha"},
-			{Animal: "kitten"},
-		},
-		{
-			{Animal: "kitten"},
-			{Animal: "puppy"},
-			{Animal: "kitten"},
-			{Animal: "puppy"},
-		},
-		{
-			{Animal: "martha"},
-			{Animal: "kitten"},
-			{Animal: "puppy"},
-			{Animal: "kitten"},
-		},
-	}
 
-	board := board{cells}
-
-	return &board
-}
 
