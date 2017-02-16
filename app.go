@@ -9,6 +9,10 @@ import (
 	"math/rand"
 )
 
+type server struct {
+	board *Board
+}
+
 func main()  {
 	server := &server{getNewBoard()}
 	fmt.Println("started")
@@ -19,98 +23,55 @@ func main()  {
 	http.ListenAndServe(":8080", nil)
 }
 
-type server struct {
-	currentBoard *Board
+func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
+	template := template.Must(template.ParseFiles("board.html"))
+	template.Execute(w, s.board)
+}
+
+func (s *server) clickHandler(w http.ResponseWriter, r *http.Request) {
+	locationString := r.URL.Path[len("/clicked/"):]
+	rowIndex, _ := strconv.Atoi(locationString[:1])
+	colIndex, _ := strconv.Atoi(locationString[2:])
+
+	if s.board.ClickedCount() >= 2 {
+		s.board.ResetClicked()
+	}
+
+	s.board.Cells[rowIndex][colIndex].Clicked = true
+	s.board.Cells[rowIndex][colIndex].Visible = true
+	s.board.checkForClickedPair()
+	http.Redirect(w, r, "/", http.StatusFound)
+	return
+}
+
+func (s *server) resetHandler (w http.ResponseWriter, r *http.Request) {
+	s.board = getNewBoard()
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func webHandler (w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, r.URL.Path[1:])
 }
 
-func (s *server) clickHandler(w http.ResponseWriter, r *http.Request) {
-	if s.currentBoard.ClickedCount() >= 2 {
-		s.currentBoard.ResetClicked()
-	}
-	locationString := r.URL.Path[len("/clicked/"):]
-	rowIndex, _ := strconv.Atoi(locationString[:1])
-	colIndex, _ := strconv.Atoi(locationString[2:])
-	s.currentBoard.Cells[rowIndex][colIndex].Clicked = true
-	s.currentBoard.Cells[rowIndex][colIndex].Visible = true
-	http.Redirect(w, r, "/", http.StatusFound)
-	s.checkForClickedPair()
-	return
-}
-
-func (s *server) resetIfTwoClicked(w http.ResponseWriter, r *http.Request) {
-	if s.currentBoard.ClickedCount() >= 2 {
-		time.Sleep(500 * time.Millisecond)
-		s.currentBoard.ResetClicked()
-		http.Redirect(w, r, "/", http.StatusFound)
-
-	}
-}
-
-func (s *server) checkForClickedPair() {
-
-	clickedCells := []*Cell{}
-	for i, thisRow := range s.currentBoard.Cells {
-		for j, thisCell := range thisRow {
-			if thisCell.Clicked  {
-				clickedCells = append(clickedCells, &s.currentBoard.Cells[i][j])
-			}
-		}
-	}
-	if len(clickedCells) != 2 {
-		return
-	}
-
-	if clickedCells[0].Animal ==  clickedCells[1].Animal {
-		clickedCells[0].Paired = true
-		clickedCells[1].Paired = true
-	}
-}
-
-func (s *server) resetHandler (w http.ResponseWriter, r *http.Request) {
-	s.currentBoard = getNewBoard()
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-
-func (s *server) viewHandler (w http.ResponseWriter, r *http.Request) {
-	gameBoard := template.Must(template.ParseFiles("board.html"))
-	gameBoard.Execute(w, s.currentBoard)
-}
-
-//func (s *server) shuffle() {
-//	rand.Seed(time.Now().UTC().UnixNano())
-//	for i, row := range s.currentBoard.Cells {
-//		for j, _ := range row {
-//			a := rand.Intn(len(s.currentBoard.Cells))
-//			b := rand.Intn(len(s.currentBoard.Cells[0]))
-//			s.currentBoard.Cells[i][j], s.currentBoard.Cells[a][b] = s.currentBoard.Cells[a][b], s.currentBoard.Cells[i][j]
-//		}
-//	}
-//}
-
 func getNewBoard() *Board {
 	cells := [][]Cell{
 		{
 			{Animal: "puppy"},
-			{Animal: "kitten"},
+			{Animal: "puppy"},
 			{Animal: "martha"},
-			{Animal: "kitten"},
+			{Animal: "martha"},
 		},
 		{
 			{Animal: "kitten"},
-			{Animal: "puppy"},
 			{Animal: "kitten"},
-			{Animal: "puppy"},
+			{Animal: "cora"},
+			{Animal: "cora"},
 		},
 		{
-			{Animal: "martha"},
-			{Animal: "kitten"},
-			{Animal: "puppy"},
-			{Animal: "kitten"},
+			{Animal: "dino"},
+			{Animal: "dino"},
+			{Animal: "reggie"},
+			{Animal: "reggie"},
 		},
 	}
 
@@ -161,8 +122,29 @@ func (b *Board) Shuffle() {
 		for j, _ := range row {
 			x := rand.Intn(len(b.Cells))
 			y := rand.Intn(len(b.Cells[0]))
+			fmt.Println(x,y)
 			b.Cells[i][j], b.Cells[x][y] = b.Cells[x][y], b.Cells[i][j]
 		}
+	}
+}
+
+func (b *Board) checkForClickedPair() {
+
+	clickedCells := []*Cell{}
+	for i, thisRow := range b.Cells {
+		for j, thisCell := range thisRow {
+			if thisCell.Clicked  {
+				clickedCells = append(clickedCells, &b.Cells[i][j])
+			}
+		}
+	}
+	if len(clickedCells) != 2 {
+		return
+	}
+
+	if clickedCells[0].Animal ==  clickedCells[1].Animal {
+		clickedCells[0].Paired = true
+		clickedCells[1].Paired = true
 	}
 }
 
