@@ -1,14 +1,6 @@
 {
 	"ImportPath": "github.com/chandley/pair-game",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v75",
-	"Packages": [
-		"./.."
-	],
-	"Deps": [
-		{
-			"ImportPath": "github.com/chandley",
-			"Rev": "b8bd9f779851e735c347235340f24b24c562fc35"
-		}
-	]
+	"GodepVersion": "v79",
+	"Deps": []
 }

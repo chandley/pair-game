@@ -122,7 +122,6 @@ func (b *Board) Shuffle() {
 		for j, _ := range row {
 			x := rand.Intn(len(b.Cells))
 			y := rand.Intn(len(b.Cells[0]))
-			fmt.Println(x,y)
 			b.Cells[i][j], b.Cells[x][y] = b.Cells[x][y], b.Cells[i][j]
 		}
 	}
